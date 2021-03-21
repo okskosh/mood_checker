@@ -33,6 +33,7 @@ class Model:
 class View:
     def __init__(self, vk_session):
         self.vk_session = vk_session
+        self.vk = self.vk_session.get_api()
 
     def __parse_message(self, text):
         action = text.split()[0]
@@ -50,9 +51,13 @@ class View:
 
                 yield (action, args)
 
-    def start(self, user):
-        vk = self.vk_session.get_api()
+    def send_message(self, user, text):
+    	self.vk.messages.send(user_id=user, message=text, random_id=self.get_random_id())
 
+    def get_random_id(self):
+    	return int(datetime.datetime.now().timestamp())
+
+    def start(self, user):
         text = "Привет! Вот команды, которые можно использовать:\n\n"\
         		"save rating <твоё настроение> descr <пара слов о дне (можно не указывать)> - "\
         		"сохраняет сегодняшнее настроение\n\n"\
@@ -62,12 +67,8 @@ class View:
         		"reset - сбрасывает сегодняшнее настроение\n\n"\
         		"about - информация о приложении"
 
-        vk.messages.send(user_id=user, message=text, random_id=self.get_random_id())
+        self.send_message(user, text)
 
-    def get_random_id(self):
-    	return int(datetime.datetime.now().timestamp())
-
-    
 
 class Controller:
     def __init__(self, model, view):
@@ -84,10 +85,13 @@ class Controller:
             if rating is None:
                 raise Exception("Pass 'rating' key in args dict")
 
-            description = args.get("dscr", "")
+            description = args.get("descr", "")
 
             self.model.save_mood(user, rating, description)
-            self.veiw.succes_save_mood(user)
+
+            text = "Ваше настроение сегодня: " + str(rating)\
+            	 + "\nПара слов о дне: " + description
+            self.view.send_message(user, text)
         elif action == "rep":
             user_moods = self.model.get_user_moods_for_current_month(user)
             # Count stats
