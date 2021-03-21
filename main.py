@@ -16,7 +16,7 @@ class Model:
 
     def __save_storage(self):
         with open("storage.json", "w", encoding="utf-8") as file:
-            json.dump(self.storage, file)
+            json.dump(self.storage, file, ensure_ascii=False)
 
     def __init__(self):
         self.storage = collections.defaultdict(dict)
@@ -24,7 +24,7 @@ class Model:
         self.__load_storage()
 
     def save_mood(self, user, rating: int, description: str):
-        self.storage[user][str(datetime.datetime.now().date())] = (rating, description)
+        self.storage[str(user)][str(datetime.datetime.now().date())] = (rating, description)
 
         self.__save_storage()
         
@@ -35,10 +35,12 @@ class View:
         self.vk_session = vk_session
         self.vk = self.vk_session.get_api()
 
-    def __parse_message(self, text):
-        action = text.split()[0]
-        keys = text.split()[1::2]
-        values = text.split()[2::2]
+    def __parse_message(self, text):    	
+        words = text.split()
+        action = words[0]
+
+        keys = words[1::2]
+        values = words[2::2]
         args = dict(zip(keys, values))
         return action, args
 
