@@ -27,8 +27,7 @@ class Model:
         self.storage[user][str(datetime.datetime.now().date())] = (rating, description)
 
         self.__save_storage()
-        print(self.storage, flush=True)
-
+        
 
 
 class View:
@@ -47,14 +46,28 @@ class View:
         for event in longpoll.listen():
             if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
                 action, args = self.__parse_message(event.text)
-                print(event.from_id, flush=True)
+                args["user"] = event.user_id
 
                 yield (action, args)
 
-    def about(self):
-
+    def start(self, user):
         vk = self.vk_session.get_api()
-        vk.messages.send(user_id=id,message="Hello!")
+
+        text = "Привет! Вот команды, которые можно использовать:\n\n"\
+        		"save rating <твоё настроение> descr <пара слов о дне (можно не указывать)> - "\
+        		"сохраняет сегодняшнее настроение\n\n"\
+        		"rep - составляет отчёт о настроении за последний месяц\n\n"\
+        		"ntf time <время уведомления> - "\
+        		"устанавливает время для отправки напоминания\n\n"\
+        		"reset - сбрасывает сегодняшнее настроение\n\n"\
+        		"about - информация о приложении"
+
+        vk.messages.send(user_id=user, message=text, random_id=self.get_random_id())
+
+    def get_random_id(self):
+    	return int(datetime.datetime.now().timestamp())
+
+    
 
 class Controller:
     def __init__(self, model, view):
@@ -65,15 +78,16 @@ class Controller:
         user = args.get("user", "unknown_user")
 
         if action == "start":
-            self.view.about()
+            self.view.start(user)
         elif action == "save":
             rating = int(args.get("rating"))
             if rating is None:
                 raise Exception("Pass 'rating' key in args dict")
 
-            description = args.get("description", "")
+            description = args.get("dscr", "")
 
             self.model.save_mood(user, rating, description)
+            self.veiw.succes_save_mood(user)
         elif action == "rep":
             user_moods = self.model.get_user_moods_for_current_month(user)
             # Count stats
@@ -82,8 +96,6 @@ class Controller:
             self.set_time_to_ask_question(user, new_time)
         elif action == "reset":
             self.model.reset_today_mood(user)
-        elif action == "show_menu":
-            self.view.show_menu()
         elif action == "about":
         	self.view.about()
         # elif action == "exit":
