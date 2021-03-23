@@ -4,6 +4,7 @@ import json
 import os
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
+from vk_api.utils import get_random_id
 
 
 class Model:
@@ -56,11 +57,8 @@ class View:
 
                 yield (action, args)
 
-    def send_message(self, user, text):
-    	self.vk.messages.send(user_id=user, message=text, random_id=self.get_random_id())
-
-    def get_random_id(self):
-    	return int(datetime.datetime.now().timestamp())
+    def __send_message(self, user, text):
+    	self.vk.messages.send(user_id=user, message=text, random_id=get_random_id())
 
     def start(self, user):
         text = "Привет! Вот команды, которые можно использовать:\n\n"\
@@ -72,7 +70,7 @@ class View:
         		"reset - сбрасывает сегодняшнее настроение\n\n"\
         		"about - информация о приложении"
 
-        self.send_message(user, text)
+        self.__send_message(user, text)
 
 
 class Controller:
