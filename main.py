@@ -46,14 +46,15 @@ class View:
         return action, args
 
     def __parse_event(self, event):
-        return self.__parse_message(event.text)
+        action, args = self.__parse_message(event.text)
+        args["user"] = event.user_id
+        return action, args
 
     def get_actions(self):
         longpoll = VkLongPoll(self.vk_session)
         for event in longpoll.listen():
             if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
                 action, args = self.__parse_event(event)
-                args["user"] = event.user_id
 
                 yield (action, args)
 
