@@ -58,7 +58,7 @@ class View:
 
                 yield (action, args)
 
-    def __send_message(self, user, text):
+    def show_to_user(self, user, text):
     	self.vk.messages.send(user_id=user, message=text, random_id=get_random_id())
 
     def start(self, user):
@@ -71,7 +71,7 @@ class View:
         		"reset - сбрасывает сегодняшнее настроение\n\n"\
         		"about - информация о приложении"
 
-        self.__send_message(user, text)
+        self.show_to_user(user, text)
 
 
 class Controller:
@@ -79,35 +79,52 @@ class Controller:
         self.model = model
         self.view = view
 
+    def __start(self, user):
+        self.view.start(user)
+
+    def __save(self, user, args):
+        rating = int(args.get("rating"))
+        if rating is None:
+            raise Exception("Pass 'rating' key in args dict")
+
+        description = args.get("descr", "")
+
+        self.model.save_mood(user, rating, description)
+
+        text = "Ваше настроение сегодня: " + str(rating)\
+             + "\nПара слов о дне: " + description
+        self.view.show_to_user(user, text)
+
+    def __rep(self, user):
+        user_moods = self.model.get_user_moods_for_current_month(user)
+        # Count stats
+        self.view.send_report_to_user(user, report)
+
+    def __ntf(self, user):
+        self.set_time_to_ask_question(user, new_time)
+
+    def __reset(self, user):
+        self.model.reset_today_mood(user)
+
+    def __about(self):
+        self.view.about()
+
+    def __error(self, user):
+        text = "Такой команды нет"
+        self.view.show_to_user(user, text)
+
     def handle_action(self, action, args):
         user = args.get("user", "unknown_user")
 
-        if action == "start":
-            self.view.start(user)
-        elif action == "save":
-            rating = int(args.get("rating"))
-            if rating is None:
-                raise Exception("Pass 'rating' key in args dict")
-
-            description = args.get("descr", "")
-
-            self.model.save_mood(user, rating, description)
-
-            text = "Ваше настроение сегодня: " + str(rating)\
-            	 + "\nПара слов о дне: " + description
-            self.view.send_message(user, text)
-        elif action == "rep":
-            user_moods = self.model.get_user_moods_for_current_month(user)
-            # Count stats
-            self.view.send_report_to_user(user, report)
-        elif action == "ntf":
-            self.set_time_to_ask_question(user, new_time)
-        elif action == "reset":
-            self.model.reset_today_mood(user)
-        elif action == "about":
-        	self.view.about()
-        # elif action == "exit":
-
+        {
+            "start" : lambda : self.__start(user), 
+            "save" : lambda : self.__save(user, args),
+            "rep" : lambda : self.__rep(user),
+            "ntf" : lambda : self.__ntf(user),
+            "reset" : lambda : self.__reset(user),
+            "about" : lambda : self.__about()
+        }.get(action, lambda : self.__error(user))()
+        
 
 if __name__ == "__main__":
     token = "413af2a20e7734a7bfc3768744c30cfaffdb92821ad32a6d0fa2d9b514011adbc49977b8a9927df961e41"
