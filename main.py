@@ -79,7 +79,7 @@ class Controller:
         self.model = model
         self.view = view
 
-    def __start(self, user):
+    def __start(self, user, args):
         self.view.start(user)
 
     def __save(self, user, args):
@@ -95,18 +95,18 @@ class Controller:
              + "\nПара слов о дне: " + description
         self.view.show_to_user(user, text)
 
-    def __rep(self, user):
+    def __rep(self, user, args):
         user_moods = self.model.get_user_moods_for_current_month(user)
         # Count stats
         self.view.send_report_to_user(user, report)
 
-    def __ntf(self, user):
+    def __ntf(self, user, args):
         self.set_time_to_ask_question(user, new_time)
 
-    def __reset(self, user):
+    def __reset(self, user, args):
         self.model.reset_today_mood(user)
 
-    def __about(self):
+    def __about(self, user, args):
         self.view.about()
 
     def __error(self, user):
@@ -116,14 +116,19 @@ class Controller:
     def handle_action(self, action, args):
         user = args.get("user", "unknown_user")
 
-        {
-            "start" : lambda : self.__start(user), 
-            "save" : lambda : self.__save(user, args),
-            "rep" : lambda : self.__rep(user),
-            "ntf" : lambda : self.__ntf(user),
-            "reset" : lambda : self.__reset(user),
-            "about" : lambda : self.__about()
-        }.get(action, lambda : self.__error(user))()
+        action_handler = {
+            "start" : self.__start, 
+            "save" : self.__save,
+            "rep" : self.__rep,
+            "ntf" : self.__ntf,
+            "reset" : self.__reset,
+            "about" : self.__about
+        }
+
+        def error_handler(user, args):
+            self.__error(user)
+
+        action_handler.get(action, error_handler)(user, args)
         
 
 if __name__ == "__main__":
