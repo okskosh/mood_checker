@@ -62,16 +62,19 @@ class View:
     	self.vk.messages.send(user_id=user, message=text, random_id=get_random_id())
 
     def start(self, user):
-        text = "Привет! Вот команды, которые можно использовать:\n\n"\
-        		"save rating <твоё настроение> descr <пара слов о дне (можно не указывать)> - "\
-        		"сохраняет сегодняшнее настроение\n\n"\
-        		"rep - составляет отчёт о настроении за последний месяц\n\n"\
-        		"ntf time <время уведомления> - "\
-        		"устанавливает время для отправки напоминания\n\n"\
-        		"reset - сбрасывает сегодняшнее настроение\n\n"\
-        		"about - информация о приложении"
+        options = collections.OrderedDict({
+            "save rating <твоё настроение> descr <пара слов о дне (можно не указывать)>" : "сохраняет сегодняшнее настроение",
+            "rep" : "составляет отчёт о настроении за последний месяц",
+            "ntf time <время уведомления>" : "устанавливает время для отправки напоминания",
+            "reset" : "сбрасывает сегодняшнее настроение",
+            "about" : "информация о приложении"      
+        })
 
-        self.show_to_user(user, text)
+        message = "Привет! Вот команды, которые можно использовать:"
+        for key in options:
+            message = message + "\n\n" + key + " - " + options[key]
+
+        self.show_to_user(user, message)
 
 
 class Controller:
