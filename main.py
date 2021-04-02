@@ -2,6 +2,7 @@ import collections
 import datetime
 import json
 import os
+import configparser
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.utils import get_random_id
@@ -25,10 +26,10 @@ class Model:
         self.__load_storage()
 
     def save_mood(self, user, rating: int, description: str):
-        self.storage[str(user)][str(datetime.datetime.now().date())] = (rating, description)
+        curr_date = str(datetime.datetime.now().date())
+        self.storage[str(user)][curr_date] = (rating, description)
 
         self.__save_storage()
-        
 
 
 class View:
@@ -36,7 +37,7 @@ class View:
         self.vk_session = vk_session
         self.vk = self.vk_session.get_api()
 
-    def __parse_message(self, text):    	
+    def __parse_message(self, text):
         words = text.split()
         action = words[0]
 
@@ -53,21 +54,26 @@ class View:
     def get_actions(self):
         longpoll = VkLongPoll(self.vk_session)
         for event in longpoll.listen():
-            if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
+            NEW = VkEventType.MESSAGE_NEW
+            if event.type == NEW and event.to_me and event.text:
                 action, args = self.__parse_event(event)
 
                 yield (action, args)
 
     def show_to_user(self, user, text):
-    	self.vk.messages.send(user_id=user, message=text, random_id=get_random_id())
+        self.vk.messages.send(
+            user_id=user,
+            message=text,
+            random_id=get_random_id()
+        )
 
     def start(self, user):
         options = collections.OrderedDict({
-            "save rating <твоё настроение> descr <пара слов о дне (можно не указывать)>" : "сохраняет сегодняшнее настроение",
-            "rep" : "составляет отчёт о настроении за последний месяц",
-            "ntf time <время уведомления>" : "устанавливает время для отправки напоминания",
-            "reset" : "сбрасывает сегодняшнее настроение",
-            "about" : "информация о приложении"      
+            "save": "сохраняет сегодняшнее настроение",
+            "rep": "составляет отчёт о настроении за последний месяц",
+            "ntf": "устанавливает время для отправки напоминания",
+            "reset": "сбрасывает сегодняшнее настроение",
+            "about": "информация о приложении"
         })
 
         message = "Привет! Вот команды, которые можно использовать:"
@@ -94,8 +100,8 @@ class Controller:
 
         self.model.save_mood(user, rating, description)
 
-        text = "Ваше настроение сегодня: " + str(rating)\
-             + "\nПара слов о дне: " + description
+        text = "Ваше настроение сегодня: " + str(rating) + \
+               "\nПара слов о дне: " + description
         self.view.show_to_user(user, text)
 
     def get_report(self, user, args):
@@ -120,7 +126,7 @@ class Controller:
         user = args.get("user", "unknown_user")
 
         action_handler = {
-            "start": self.start, 
+            "start": self.start,
             "save":  self.save_mood,
             "rep":   self.get_report,
             "ntf":   self.set_notification,
@@ -129,10 +135,14 @@ class Controller:
         }
 
         action_handler.get(action, self.handle_error)(user, args)
-        
+
 
 if __name__ == "__main__":
-    token = "413af2a20e7734a7bfc3768744c30cfaffdb92821ad32a6d0fa2d9b514011adbc49977b8a9927df961e41"
+    config = configparser.ConfigParser()
+    config.read("config.ini")
+
+    token = config["vk"]["token"]
+
     vk_session = vk_api.VkApi(token=token)
 
     model = Model()
@@ -141,4 +151,3 @@ if __name__ == "__main__":
 
     for action, args in view.get_actions():
         controller.handle_action(action, args)
-
