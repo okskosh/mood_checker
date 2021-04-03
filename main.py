@@ -76,9 +76,12 @@ class View:
             "about": "информация о приложении"
         })
 
-        message = "Привет! Вот команды, которые можно использовать:"
-        for key in options:
-            message = message + "\n\n" + key + " - " + options[key]
+        options_list = [f"{key} - {value}" for (key, value) in options.items()]
+        options_message = "\n\n".join(options_list)
+        message = (
+            "Привет! Вот команды, которые можно использовать:\n\n"
+            f"{options_message}"
+        )
 
         self.show_to_user(user, message)
 
@@ -100,8 +103,10 @@ class Controller:
 
         self.model.save_mood(user, rating, description)
 
-        text = "Ваше настроение сегодня: " + str(rating) + \
-               "\nПара слов о дне: " + description
+        text = (
+            f"Ваше настроение сегодня: {rating}"
+            f"\nПара слов о дне: {description}"
+        )
         self.view.show_to_user(user, text)
 
     def get_report(self, user, args):
