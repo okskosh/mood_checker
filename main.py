@@ -44,11 +44,13 @@ class View:
         keys = words[1::2]
         values = words[2::2]
         args = dict(zip(keys, values))
+
         return action, args
 
     def __parse_event(self, event):
         action, args = self.__parse_message(event.text)
         args["user"] = event.user_id
+
         return action, args
 
     def get_actions(self):
@@ -76,11 +78,11 @@ class View:
             "about": "информация о приложении"
         })
 
-        options_list = [f"{key} - {value}" for (key, value) in options.items()]
-        options_message = "\n\n".join(options_list)
+        commands_list = (f"{key} - {value}" for (key, value) in options.items())
+        commands_message = "\n\n".join(options_list)
         message = (
             "Привет! Вот команды, которые можно использовать:\n\n"
-            f"{options_message}"
+            f"{commands_message}"
         )
 
         self.show_to_user(user, message)
@@ -104,24 +106,27 @@ class Controller:
         self.model.save_mood(user, rating, description)
 
         text = (
-            f"Ваше настроение сегодня: {rating}"
-            f"\nПара слов о дне: {description}"
+            f"Ваше настроение сегодня: {rating}\n"
+            f"Пара слов о дне: {description}"
         )
         self.view.show_to_user(user, text)
 
     def get_report(self, user, args):
-        user_moods = self.model.get_user_moods_for_current_month(user)
-        # Count stats
-        self.view.send_report_to_user(user, report)
+        ...
+        # user_moods = self.model.get_user_moods_for_current_month(user)
+        # self.view.send_report_to_user(user, report)
 
     def set_notification(self, user, args):
-        self.set_time_to_ask_question(user, new_time)
+        ...
+        # self.set_time_to_ask_question(user, new_time)
 
     def reset_mood(self, user, args):
-        self.model.reset_today_mood(user)
+        ...
+        # self.model.reset_today_mood(user)
 
     def get_info(self, user, args):
-        self.view.about()
+        ...
+        # self.view.about()
 
     def handle_error(self, user, args):
         text = "Такой команды нет"
