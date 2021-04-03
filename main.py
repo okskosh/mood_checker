@@ -54,8 +54,8 @@ class View:
     def get_actions(self):
         longpoll = VkLongPoll(self.vk_session)
         for event in longpoll.listen():
-            NEW = VkEventType.MESSAGE_NEW
-            if event.type == NEW and event.to_me and event.text:
+            is_message = (event.type == VkEventType.MESSAGE_NEW)
+            if is_message and event.to_me and event.text:
                 action, args = self.__parse_event(event)
 
                 yield (action, args)
