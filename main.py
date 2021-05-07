@@ -66,7 +66,8 @@ class View:
         self.vk.messages.send(
             user_id=user,
             message=text,
-            random_id=get_random_id()
+            random_id=get_random_id(),
+            keyboard=open("keyboard.json","r",encoding="UTF-8").read()
         )
 
     def start(self, user):
@@ -79,7 +80,7 @@ class View:
         })
 
         commands_list = (f"{key} - {value}" for (key, value) in options.items())
-        commands_message = "\n\n".join(options_list)
+        commands_message = "\n\n".join(commands_list)
         message = (
             "Привет! Вот команды, которые можно использовать:\n\n"
             f"{commands_message}"
@@ -136,12 +137,12 @@ class Controller:
         user = args.get("user", "unknown_user")
 
         action_handler = {
-            "start": self.start,
-            "save":  self.save_mood,
-            "rep":   self.get_report,
-            "ntf":   self.set_notification,
-            "reset": self.reset_mood,
-            "about": self.get_info
+            "Начать": self.start,
+            "Сохранить":  self.save_mood,
+            "Отчет":   self.get_report,
+            "Уведомления":   self.set_notification,
+            "Сбросить": self.reset_mood,
+            "Информация": self.get_info
         }
 
         action_handler.get(action, self.handle_error)(user, args)

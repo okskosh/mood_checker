@@ -1,0 +1,49 @@
+{
+  "one_time": false,
+  "buttons": [
+    [
+      {
+      "action": {
+        "type": "text",
+        "label": "Начать"
+      },
+      "color": "default"
+    },
+    {
+        "action": {
+          "type": "text",
+          "label": "Отчет"
+        },
+        "color": "default"
+    }],
+    [
+    {
+        "action": {
+          "type": "text",
+          "label": "Сохранить"
+        },
+        "color": "default"
+    },
+    {
+        "action": {
+          "type": "text",
+          "label": "Уведомления"
+        },
+        "color": "default"
+    }],
+    [{
+        "action": {
+          "type": "text",
+          "label": "Сбросить"
+        },
+        "color": "default"
+    },
+    {
+        "action": {
+          "type": "text",
+          "label": "Информация"
+        },
+        "color": "default"
+    }]
+  ]
+}
