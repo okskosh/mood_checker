@@ -1,16 +1,17 @@
 """Mood checker."""
+import collections
 import configparser
 import datetime
-import collections
 import json
 import os
 
 import vk_api
-from vk_api.longpoll import VkLongPoll, VkEventType
+from vk_api.longpoll import VkEventType, VkLongPoll
 from vk_api.utils import get_random_id
 
 
 class Model:
+    """Constructs storage."""
     def __init__(self):
         self.storage = collections.defaultdict(dict)
 
@@ -64,6 +65,7 @@ class View:
 
                 yield (action, args)
 
+    """Send message with specified text to user."""
     def show_to_user(self, user, text, keyboard):
         self.vk.messages.send(
             user_id=user,
@@ -81,15 +83,15 @@ class View:
             "Информация": "информация о приложении",
         })
 
-        command_list = (f"{key} - {value}" for (key, value) in options.items())
+        command_list = (f"{key} - {option}" for (key, option) in options.items()) # noqa: WPS110
         commands_message = "\n\n".join(command_list)
         message = (
             "Привет! Вот команды, которые можно использовать:\n\n"
             f"{commands_message}"
         )
 
-        with open("keyboard.json", "r", encoding="UTF-8") as file:
-        	self.show_to_user(user, message, file.read())
+        with open("keyboard.json", "r", encoding="UTF-8") as keyboard:
+            self.show_to_user(user, message, keyboard.read())
 
 
 class Controller:
@@ -101,19 +103,16 @@ class Controller:
         self.view.start(user)
 
     def save_mood(self, user, args):
-        self.view.show_to_user(
-            user,
-            "Введите сегодняшнее настроение",
-            open("keyboard.json", "r", encoding="UTF-8").read(),
-        )
-        #get actions from View
-        rating = int()
-        if rating is None:
-            raise Exception("Pass 'rating' key in args dict")
-
-
         with open("keyboard.json", "r", encoding="UTF-8") as file:
-            self.view.show_to_user(user, "Введите описание", file.read())
+            self.view.show_to_user(user, "Введите сегодняшнее настроение", file.read())
+        # get actions from View
+        # rating = int()
+        rating = 0
+        # if rating is None:
+        #     raise Exception("Pass 'rating' key in args dict")
+
+        with open("keyboard.json", "r", encoding="UTF-8") as keyboard:
+            self.view.show_to_user(user, "Введите описание", keyboard.read())
         description = args.get("descr", "")
 
         self.model.save_mood(user, rating, description)
@@ -122,8 +121,8 @@ class Controller:
             f"Ваше настроение сегодня: {rating}\n"
             f"Пара слов о дне: {description}"
         )
-        with open("keyboard.json", "r", encoding="UTF-8") as file:
-            self.view.show_to_user(user, text, file.read())
+        with open("keyboard.json", "r", encoding="UTF-8") as keyboard:
+            self.view.show_to_user(user, text, keyboard.read())
 
     def get_report(self, user, args):
         ...
