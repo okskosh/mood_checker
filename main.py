@@ -12,6 +12,7 @@ from vk_api.utils import get_random_id
 
 class Model:
     """Constructs storage."""
+
     def __init__(self):
         self.storage = collections.defaultdict(dict)
 
@@ -65,8 +66,8 @@ class View:
 
                 yield (action, args)
 
-    """Send message with specified text to user."""
     def show_to_user(self, user, text, keyboard):
+        """Send message with specified text to user."""
         self.vk.messages.send(
             user_id=user,
             message=text,
@@ -83,7 +84,9 @@ class View:
             "Информация": "информация о приложении",
         })
 
-        command_list = (f"{key} - {option}" for (key, option) in options.items()) # noqa: WPS110
+        command_list = []
+        for (key, option) in options.items():
+            command_list.append((f"{key} - {option}"))
         commands_message = "\n\n".join(command_list)
         message = (
             "Привет! Вот команды, которые можно использовать:\n\n"
@@ -104,13 +107,16 @@ class Controller:
 
     def save_mood(self, user, args):
         with open("keyboard.json", "r", encoding="UTF-8") as file:
-            self.view.show_to_user(user, "Введите сегодняшнее настроение", file.read())
+            self.view.show_to_user(
+            	user,
+            	"Введите сегодняшнее настроение",
+            	file.read(),
+            )
         # get actions from View
         # rating = int()
         rating = 0
         # if rating is None:
         #     raise Exception("Pass 'rating' key in args dict")
-
         with open("keyboard.json", "r", encoding="UTF-8") as keyboard:
             self.view.show_to_user(user, "Введите описание", keyboard.read())
         description = args.get("descr", "")
@@ -121,8 +127,8 @@ class Controller:
             f"Ваше настроение сегодня: {rating}\n"
             f"Пара слов о дне: {description}"
         )
-        with open("keyboard.json", "r", encoding="UTF-8") as keyboard:
-            self.view.show_to_user(user, text, keyboard.read())
+        with open("keyboard.json", "r", encoding="UTF-8") as json_file:
+            self.view.show_to_user(user, text, json_file.read())
 
     def get_report(self, user, args):
         ...
