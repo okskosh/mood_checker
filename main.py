@@ -108,9 +108,9 @@ class Controller:
     def save_mood(self, user, args):
         with open("keyboard.json", "r", encoding="UTF-8") as file:
             self.view.show_to_user(
-            	user,
-            	"Введите сегодняшнее настроение",
-            	file.read(),
+                user,
+                "Введите сегодняшнее настроение",
+                file.read(),
             )
         # get actions from View
         # rating = int()
