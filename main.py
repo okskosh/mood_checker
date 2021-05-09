@@ -1,14 +1,21 @@
-import collections
+"""Mood checker."""
+import configparser
 import datetime
+import collections
 import json
 import os
-import configparser
+
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.utils import get_random_id
 
 
 class Model:
+    def __init__(self):
+        self.storage = collections.defaultdict(dict)
+
+        self.__load_storage()
+
     def __load_storage(self):
         if not os.path.isfile("storage.json"):
             self.__save_storage()
@@ -19,11 +26,6 @@ class Model:
     def __save_storage(self):
         with open("storage.json", "w", encoding="utf-8") as file:
             json.dump(self.storage, file, ensure_ascii=False)
-
-    def __init__(self):
-        self.storage = collections.defaultdict(dict)
-
-        self.__load_storage()
 
     def save_mood(self, user, rating: int, description: str):
         curr_date = str(datetime.datetime.now().date())
@@ -62,31 +64,32 @@ class View:
 
                 yield (action, args)
 
-    def show_to_user(self, user, text):
+    def show_to_user(self, user, text, keyboard):
         self.vk.messages.send(
             user_id=user,
             message=text,
             random_id=get_random_id(),
-            keyboard=open("keyboard.json","r",encoding="UTF-8").read()
+            keyboard=keyboard,
         )
 
     def start(self, user):
         options = collections.OrderedDict({
-            "save": "сохраняет сегодняшнее настроение",
-            "rep": "составляет отчёт о настроении за последний месяц",
-            "ntf": "устанавливает время для отправки напоминания",
-            "reset": "сбрасывает сегодняшнее настроение",
-            "about": "информация о приложении"
+            "Сохранить": "сохраняет сегодняшнее настроение",
+            "Отчет": "составляет отчёт о настроении за последний месяц",
+            "Уведомления": "устанавливает время для отправки напоминания",
+            "Сбросить": "сбрасывает сегодняшнее настроение",
+            "Информация": "информация о приложении",
         })
 
-        commands_list = (f"{key} - {value}" for (key, value) in options.items())
-        commands_message = "\n\n".join(commands_list)
+        command_list = (f"{key} - {value}" for (key, value) in options.items())
+        commands_message = "\n\n".join(command_list)
         message = (
             "Привет! Вот команды, которые можно использовать:\n\n"
             f"{commands_message}"
         )
 
-        self.show_to_user(user, message)
+        with open("keyboard.json", "r", encoding="UTF-8") as file:
+        	self.show_to_user(user, message, file.read())
 
 
 class Controller:
@@ -98,10 +101,19 @@ class Controller:
         self.view.start(user)
 
     def save_mood(self, user, args):
-        rating = int(args.get("rating"))
+        self.view.show_to_user(
+            user,
+            "Введите сегодняшнее настроение",
+            open("keyboard.json", "r", encoding="UTF-8").read(),
+        )
+        #get actions from View
+        rating = int()
         if rating is None:
             raise Exception("Pass 'rating' key in args dict")
 
+
+        with open("keyboard.json", "r", encoding="UTF-8") as file:
+            self.view.show_to_user(user, "Введите описание", file.read())
         description = args.get("descr", "")
 
         self.model.save_mood(user, rating, description)
@@ -110,7 +122,8 @@ class Controller:
             f"Ваше настроение сегодня: {rating}\n"
             f"Пара слов о дне: {description}"
         )
-        self.view.show_to_user(user, text)
+        with open("keyboard.json", "r", encoding="UTF-8") as file:
+            self.view.show_to_user(user, text, file.read())
 
     def get_report(self, user, args):
         ...
@@ -138,11 +151,11 @@ class Controller:
 
         action_handler = {
             "Начать": self.start,
-            "Сохранить":  self.save_mood,
-            "Отчет":   self.get_report,
-            "Уведомления":   self.set_notification,
+            "Сохранить": self.save_mood,
+            "Отчет": self.get_report,
+            "Уведомления": self.set_notification,
             "Сбросить": self.reset_mood,
-            "Информация": self.get_info
+            "Информация": self.get_info,
         }
 
         action_handler.get(action, self.handle_error)(user, args)
