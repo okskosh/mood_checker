@@ -10,54 +10,51 @@ from vk_api.longpoll import VkEventType, VkLongPoll
 from vk_api.utils import get_random_id
 
 
-class Model:
-    """Constructs storage."""
+class Model (object):
+    """Data for work."""
 
     def __init__(self):
+        """Construct storage."""
         self.storage = collections.defaultdict(dict)
 
         self.__load_storage()
 
-    def __load_storage(self):
-        if not os.path.isfile("storage.json"):
-            self.__save_storage()
-
-        with open("storage.json", "r", encoding="utf-8") as file:
-            self.storage = collections.defaultdict(dict, json.load(file))
-
-    def __save_storage(self):
-        with open("storage.json", "w", encoding="utf-8") as file:
-            json.dump(self.storage, file, ensure_ascii=False)
-
     def save_mood(self, user, rating: int, description: str):
+        """Save mood from user."""
         curr_date = str(datetime.datetime.now().date())
         self.storage[str(user)][curr_date] = (rating, description)
 
         self.__save_storage()
 
+    def _load_storage(self):
+        if not os.path.isfile("storage.json"):
+            self.__save_storage()
 
-class View:
+        with open("storage.json", "r", encoding="utf-8") as storage_file:
+            self.storage = collections.defaultdict(
+                dict,
+                json.load(storage_file),
+            )
+
+    def _save_storage(self):
+        with open("storage.json", "w", encoding="utf-8") as storage_file:
+            json.dump(self.storage, storage_file, ensure_ascii=False)
+
+
+class View (object):
+    """Interface for communication with user."""
+
     def __init__(self, vk_session):
+        """Construct session."""
         self.vk_session = vk_session
         self.vk = self.vk_session.get_api()
 
-    def __parse_message(self, text):
-        words = text.split()
-        action = words[0]
-
-        keys = words[1::2]
-        values = words[2::2]
-        args = dict(zip(keys, values))
-
-        return action, args
-
-    def __parse_event(self, event):
-        action, args = self.__parse_message(event.text)
-        args["user"] = event.user_id
-
-        return action, args
-
     def get_actions(self):
+        """Catches events that user produce.
+
+        Yields:
+            tuple: parameters of every event.
+        """
         longpoll = VkLongPoll(self.vk_session)
         for event in longpoll.listen():
             is_message = (event.type == VkEventType.MESSAGE_NEW)
@@ -75,7 +72,8 @@ class View:
             keyboard=keyboard,
         )
 
-    def start(self, user):
+    def start(self, user, keyboard):
+        """Send start message with info to user."""
         options = collections.OrderedDict({
             "Сохранить": "сохраняет сегодняшнее настроение",
             "Отчет": "составляет отчёт о настроении за последний месяц",
@@ -87,38 +85,54 @@ class View:
         command_list = []
         for (key, option) in options.items():
             command_list.append((f"{key} - {option}"))
-        commands_message = "\n\n".join(command_list)
         message = (
             "Привет! Вот команды, которые можно использовать:\n\n"
-            f"{commands_message}"
+            "\n\n".join(command_list)
         )
 
-        with open("keyboard.json", "r", encoding="UTF-8") as keyboard:
-            self.show_to_user(user, message, keyboard.read())
+        self.show_to_user(user, message, keyboard)
+
+    def _parse_message(self, text):
+        words = text.split()
+        action = words[0]
+
+        keys = words[1::2]
+        descriptions = words[2::2]
+        args = dict(zip(keys, descriptions))
+
+        return action, args
+
+    def _parse_event(self, event):
+        action, args = self.__parse_message(event.text)
+        args["user"] = event.user_id
+
+        return action, args
 
 
-class Controller:
+class Controller (object):
+    """Operates with data."""
+
     def __init__(self, model, view):
+        """Construct operator."""
         self.model = model
         self.view = view
+        with open("keyboard.json", "r", encoding="UTF-8") as keyboard:
+            self.keyboard = keyboard.read()
 
     def start(self, user, args):
-        self.view.start(user)
+        """Implement operation "start"."""
+        self.view.start(user, self.keyboard)
 
     def save_mood(self, user, args):
-        with open("keyboard.json", "r", encoding="UTF-8") as file:
-            self.view.show_to_user(
-                user,
-                "Введите сегодняшнее настроение",
-                file.read(),
-            )
-        # get actions from View
-        # rating = int()
+        """Implement operation "save"."""
+        self.view.show_to_user(
+            user,
+            "Введите сегодняшнее настроение",
+            self.keyboard,
+        )
+
         rating = 0
-        # if rating is None:
-        #     raise Exception("Pass 'rating' key in args dict")
-        with open("keyboard.json", "r", encoding="UTF-8") as keyboard:
-            self.view.show_to_user(user, "Введите описание", keyboard.read())
+        self.view.show_to_user(user, "Введите описание", self.keyboard)
         description = args.get("descr", "")
 
         self.model.save_mood(user, rating, description)
@@ -127,31 +141,15 @@ class Controller:
             f"Ваше настроение сегодня: {rating}\n"
             f"Пара слов о дне: {description}"
         )
-        with open("keyboard.json", "r", encoding="UTF-8") as json_file:
-            self.view.show_to_user(user, text, json_file.read())
-
-    def get_report(self, user, args):
-        ...
-        # user_moods = self.model.get_user_moods_for_current_month(user)
-        # self.view.send_report_to_user(user, report)
-
-    def set_notification(self, user, args):
-        ...
-        # self.set_time_to_ask_question(user, new_time)
-
-    def reset_mood(self, user, args):
-        ...
-        # self.model.reset_today_mood(user)
-
-    def get_info(self, user, args):
-        ...
-        # self.view.about()
+        self.view.show_to_user(user, text, self.keyboard)
 
     def handle_error(self, user, args):
+        """Catch wrong operation."""
         text = "Такой команды нет"
-        self.view.show_to_user(user, text)
+        self.view.show_to_user(user, text, self.keyboard)
 
     def handle_action(self, action, args):
+        """Catch action."""
         user = args.get("user", "unknown_user")
 
         action_handler = {
