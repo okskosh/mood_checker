@@ -103,7 +103,7 @@ class View (object):
         )
 
 
-class Controller (object):
+class Controller (object):  # noqa: WPS214
     """Operates with data."""
 
     def __init__(self, model, view):
