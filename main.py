@@ -112,8 +112,8 @@ class Controller (object):
         self.view = view
         with open("keyboard.json", "r", encoding="UTF-8") as keyboard:
             self.keyboard = keyboard.read()
-        self.rating = 0
-        self.description = ""
+        self.ratings = {}
+        self.descriptions = {}
 
     def start(self, user):
         """Implement operation "start"."""
@@ -165,7 +165,7 @@ class Controller (object):
     def handle_mood(self, text, user):
         """Catch mood."""
         try:
-            self.rating = int(text)
+            self.ratings[user] = int(text)
         except ValueError:
             self.view.show_to_user(user, "Попробуйте снова", self.keyboard)
             return
@@ -175,13 +175,13 @@ class Controller (object):
 
     def handle_description(self, text, user):
         """Catch description."""
-        self.description = text
+        self.descriptions[user] = text
 
-        self.model.save_mood(user, self.rating, self.description)
+        self.model.save_mood(user, self.ratings[user], self.descriptions[user])
 
         message = (
-            f"Ваше настроение сегодня: {self.rating}\n"
-            f"Пара слов о дне: {self.description}"
+            f"Ваше настроение сегодня: {self.ratings[user]}\n"
+            f"Пара слов о дне: {self.descriptions[user]}"
         )
         self.view.show_to_user(user, message, self.keyboard)
         self.view.curr_state = State.MAIN_MENU
