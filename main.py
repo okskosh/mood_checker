@@ -121,12 +121,12 @@ class Controller (object):
 
     def save_mood(self, user):
         """Implement operation "save"."""
-        self.view.curr_state = State(1)
         self.view.show_to_user(
             user,
             "Введите сегодняшнее настроение",
             self.keyboard,
         )
+        self.view.curr_state = State.SAVE_MOOD
 
     def get_report(self, user):
         """Implement operation "report"."""
@@ -170,8 +170,8 @@ class Controller (object):
             self.view.show_to_user(user, "Попробуйте снова", self.keyboard)
             return
 
-        self.view.curr_state = State(2)
         self.view.show_to_user(user, "Введите описание", self.keyboard)
+        self.view.curr_state = State.SAVE_DESCRIPTION
 
     def handle_description(self, text, user):
         """Catch description."""
@@ -184,7 +184,7 @@ class Controller (object):
             f"Пара слов о дне: {self.description}"
         )
         self.view.show_to_user(user, message, self.keyboard)
-        self.view.curr_state = State(0)
+        self.view.curr_state = State.MAIN_MENU
 
 
 if __name__ == "__main__":
