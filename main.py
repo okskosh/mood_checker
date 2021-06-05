@@ -128,24 +128,24 @@ class Controller (object):  # noqa: WPS214
         )
         self.view.curr_state = State.SAVE_MOOD
 
-    def get_report(self, user):
+    def report(self, user):
         """Implement operation "report"."""
         curr_date = datetime.date.today()
-        first_day = curr_date.replace(day=1)
-        i = first_day
+        i = curr_date.replace(day=1)
         mood_sum = 0
         days = 0
         while (i <= curr_date):
             try:
-                mood_sum += self.model.storage[str(user)][str(i)][0]
+                note_at_i_day = self.model.storage[str(user)][str(i)]
                 days += 1
             except KeyError:
-                ...
+                note_at_i_day = [0, 0]
+            mood_sum += note_at_i_day[0]
             i = i + datetime.timedelta(days=1)
 
         self.view.show_to_user(
             user,
-            "Ваше среднее настроение за текущий месяц: " + str(mood_sum / days),
+            "Ваше среднее настроение за месяц: {0}".format(mood_sum / days),
             self.keyboard,
         )
 
@@ -171,7 +171,7 @@ class Controller (object):  # noqa: WPS214
         action_handler = {
             "Начать": self.start,
             "Сохранить": self.save_mood,
-            "Отчет": self.get_report,
+            "Отчет": self.report,
             "Уведомления": self.set_notification,
             "Сбросить": self.reset_mood,
             "Информация": self.get_info,
