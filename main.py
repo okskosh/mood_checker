@@ -37,7 +37,7 @@ class Model (object):
 
     def _load_storage(self):
         if not os.path.isfile("storage.json"):
-            self.__save_storage()
+            self._save_storage()
 
         with open("storage.json", "r", encoding="utf-8") as storage_file:
             self.storage = collections.defaultdict(
@@ -130,7 +130,24 @@ class Controller (object):  # noqa: WPS214
 
     def get_report(self, user):
         """Implement operation "report"."""
-        return 0
+        curr_date = datetime.date.today()
+        first_day = curr_date.replace(day=1)
+        i = first_day
+        mood_sum = 0
+        days = 0
+        while (i <= curr_date):
+            try:
+                mood_sum += self.model.storage[str(user)][str(i)][0]
+                days += 1
+            except KeyError:
+                ...
+            i = i + datetime.timedelta(days=1)
+
+        self.view.show_to_user(
+            user,
+            "Ваше среднее настроение за текущий месяц: " + str(mood_sum / days),
+            self.keyboard,
+        )
 
     def set_notification(self, user):
         """Implement operation ""notify."""
