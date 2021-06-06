@@ -35,6 +35,10 @@ class Model (object):
 
         self._save_storage()
 
+    def refresh_storage(self):
+        """Refresh data in file."""
+        self._save_storage()
+
     def _load_storage(self):
         if not os.path.isfile("storage.json"):
             self.__save_storage()
@@ -138,7 +142,22 @@ class Controller (object):  # noqa: WPS214
 
     def reset_mood(self, user):
         """Implement operation "reset"."""
-        return 0
+        curr_date = str(datetime.datetime.now().date())
+        try:
+            self.model.storage[str(user)].pop(curr_date)
+            self.view.show_to_user(
+                user,
+                "Запись о сегодняшнем настроении сброшена.",
+                self.keyboard,
+            )
+        except KeyError:
+            self.view.show_to_user(
+                user,
+                "Нет записи о сегодняшнем настроении.",
+                self.keyboard,
+            )
+
+        self.model.refresh_storage()
 
     def get_info(self, user):
         """Implement operation "info"."""
