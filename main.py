@@ -115,7 +115,7 @@ class Controller (object):  # noqa: WPS214
             self.keyboard = keyboard.read()
         self.ratings = {}
         self.descriptions = {}
-        self.ntf_times = {}
+        self.notification_times = {}
 
     def start(self, user):
         """Implement operation "start"."""
@@ -193,12 +193,12 @@ class Controller (object):  # noqa: WPS214
         self.view.show_to_user(user, message, self.keyboard)
         self.view.curr_state = State.MAIN_MENU
 
-    def handle_ntf_time(self, text, user):
-        """Catch notification time."""
-        self.ntf_times[user] = text
+    def handle_notification_time(self, text, user):
+        """Set new time to ask for mood input."""
+        self.notification_times[user] = text
 
         message = (
-            f"Установлено время уведомления {self.ntf_time[user]}"
+            f"Установлено время уведомления {self.notification_times[user]}"
         )
         self.view.show_to_user(user, message, self.keyboard)
 
@@ -216,13 +216,13 @@ if __name__ == "__main__":
     controller = Controller(model, view)
 
     for event in view.get_actions():
-        if view.curr_state == State(0):
+        if view.curr_state == State.MAIN_MENU:
             action = event.text
             user = event.user_id
             controller.handle_action(action, user)
-        elif view.curr_state == State(1):
+        elif view.curr_state == State.SAVE_MOOD:
             controller.handle_mood(event.text, event.user_id)
-        elif view.curr_state == State(2):
+        elif view.curr_state == State.SAVE_DESCRIPTION:
             controller.handle_description(event.text, event.user_id)
         elif view.curr_state == State.SET_NOTIFICATION:
-            controller.handle_ntf_time(event.text, event.user_id)
+            controller.handle_notification_time(event.text, event.user_id)
