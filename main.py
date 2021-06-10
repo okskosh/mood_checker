@@ -35,9 +35,16 @@ class Model (object):
 
         self._save_storage()
 
+    def refresh_storage(self):
+        """Refresh data in file.
+
+        Changed data storage will be written to file.
+        """
+        self._save_storage()
+
     def _load_storage(self):
         if not os.path.isfile("storage.json"):
-            self.__save_storage()
+            self._save_storage()
 
         with open("storage.json", "r", encoding="utf-8") as storage_file:
             self.storage = collections.defaultdict(
@@ -138,7 +145,15 @@ class Controller (object):  # noqa: WPS214
 
     def reset_mood(self, user):
         """Implement operation "reset"."""
-        return 0
+        curr_date = str(datetime.datetime.now().date())
+        self.model.storage[str(user)].pop(curr_date, None)
+        self.view.show_to_user(
+            user,
+            "Запись о сегодняшнем настроении сброшена.",
+            self.keyboard,
+        )
+
+        self.model.refresh_storage()
 
     def show_info(self, user):
         """Implement operation "info"."""
