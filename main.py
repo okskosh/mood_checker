@@ -143,14 +143,14 @@ class Controller (object):  # noqa: WPS214
 
     def report(self, user):
         """Generate month report about moods."""
-        i = datetime.date.today().replace(day=1)
-        notes = []
-        while (i <= datetime.date.today()):
-            user_note = self.model.storage.get(str(user))
-            notes.append(user_note.get(str(i)))
-            i = i + datetime.timedelta(days=1)
-
-        moods = [note[0] for note in notes if note is not None]
+        start_date = datetime.date.today().replace(day=1)
+        moods = []
+        user_notes = self.model.storage.get(str(user))
+        while (start_date <= datetime.date.today()):
+            note = user_notes.get(str(start_date))
+            if note is not None:
+                moods.append(note[0])
+            start_date += datetime.timedelta(days=1)
 
         self.view.show_to_user(
             user,
