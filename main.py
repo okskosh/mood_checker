@@ -140,9 +140,14 @@ class Controller (object):  # noqa: WPS214
         """Implement operation "reset"."""
         return 0
 
-    def get_info(self, user):
+    def show_info(self, user):
         """Implement operation "info"."""
-        return 0
+        message = "Mood Checker - это чатбот Вконтакте, который позволяет отслеживать настоение каждый день.\n"  # noqa: E501
+        self.view.show_to_user(
+            user,
+            message,
+            self.keyboard,
+        )
 
     def handle_error(self, user):
         """Catch wrong operation."""
@@ -157,7 +162,7 @@ class Controller (object):  # noqa: WPS214
             "Отчет": self.get_report,
             "Уведомления": self.set_notification,
             "Сбросить": self.reset_mood,
-            "Информация": self.get_info,
+            "Информация": self.show_info,
         }
 
         action_handler.get(action, self.handle_error)(user)
