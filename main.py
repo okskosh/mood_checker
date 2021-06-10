@@ -4,6 +4,7 @@ import configparser
 import datetime
 import json
 import os
+import statistics
 from enum import Enum
 
 import vk_api
@@ -103,6 +104,18 @@ class View (object):
         )
 
 
+def create_report_message(moods):
+    """Generate message with stats info."""
+    mean_mood = statistics.mean(moods)
+    std_mood = round(statistics.pstdev(moods), 2)
+    median_mood = statistics.median(moods)
+    return (
+        f"Ваше среднее настроение за месяц: {mean_mood}\n"
+        f"Самое частое настроение за месяц: {median_mood}\n"
+        f"Разброс настроений за месяц: {std_mood}"
+    )
+
+
 class Controller (object):  # noqa: WPS214
     """Operates with data."""
 
@@ -129,23 +142,19 @@ class Controller (object):  # noqa: WPS214
         self.view.curr_state = State.SAVE_MOOD
 
     def report(self, user):
-        """Implement operation "report"."""
-        curr_date = datetime.date.today()
-        i = curr_date.replace(day=1)
-        mood_sum = 0
-        days = 0
-        while (i <= curr_date):
-            try:
-                note_at_i_day = self.model.storage[str(user)][str(i)]
-                days += 1
-            except KeyError:
-                note_at_i_day = [0, 0]
-            mood_sum += note_at_i_day[0]
+        """Generate month report about moods."""
+        i = datetime.date.today().replace(day=1)
+        notes = []
+        while (i <= datetime.date.today()):
+            user_note = self.model.storage.get(str(user))
+            notes.append(user_note.get(str(i)))
             i = i + datetime.timedelta(days=1)
+
+        moods = [note[0] for note in notes if note is not None]
 
         self.view.show_to_user(
             user,
-            "Ваше среднее настроение за месяц: {0}".format(mood_sum / days),
+            create_report_message(moods),
             self.keyboard,
         )
 
