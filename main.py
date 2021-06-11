@@ -4,6 +4,7 @@ import configparser
 import datetime
 import json
 import os
+import statistics
 from enum import Enum
 
 import vk_api
@@ -111,6 +112,18 @@ class View (object):
         )
 
 
+def create_report_message(moods):
+    """Generate message with stats info."""
+    mean_mood = statistics.mean(moods)
+    std_mood = round(statistics.pstdev(moods), 2)
+    median_mood = statistics.median(moods)
+    return (
+        f"Ваше среднее настроение за месяц: {mean_mood}\n"
+        f"Самое частое настроение за месяц: {median_mood}\n"
+        f"Разброс настроений за месяц: {std_mood}"
+    )
+
+
 class Controller (object):  # noqa: WPS214
     """Operates with data."""
 
@@ -137,9 +150,22 @@ class Controller (object):  # noqa: WPS214
         )
         self.view.curr_state = State.SAVE_MOOD
 
-    def get_report(self, user):
-        """Implement operation "report"."""
-        return 0
+    def report(self, user):
+        """Generate month report about moods."""
+        start_date = datetime.date.today().replace(day=1)
+        moods = []
+        user_notes = self.model.storage.get(str(user))
+        while (start_date <= datetime.date.today()):
+            note = user_notes.get(str(start_date))
+            if note is not None:
+                moods.append(note[0])
+            start_date += datetime.timedelta(days=1)
+
+        self.view.show_to_user(
+            user,
+            create_report_message(moods),
+            self.keyboard,
+        )
 
     def set_notification(self, user):
         """Implement operation ""notify."""
@@ -181,7 +207,7 @@ class Controller (object):  # noqa: WPS214
         action_handler = {
             "Начать": self.start,
             "Сохранить": self.save_mood,
-            "Отчет": self.get_report,
+            "Отчет": self.report,
             "Уведомления": self.set_notification,
             "Сбросить": self.reset_mood,
             "Информация": self.show_info,
