@@ -5,6 +5,8 @@ import datetime
 import json
 import os
 import statistics
+import threading
+import time
 from enum import Enum
 
 import vk_api
@@ -21,14 +23,19 @@ class State (Enum):
     SET_NOTIFICATION = 3
 
 
-class Model (object):
+UTF = "utf-8"
+
+
+class Model (object):  # noqa: WPS214
     """Data for work."""
 
     def __init__(self):
         """Construct storage."""
         self.storage = collections.defaultdict(dict)
+        self.notifications = collections.defaultdict(dict)
 
         self._load_storage()
+        self.load_notifications()
 
     def save_mood(self, user, rating: int, description: str):
         """Save mood from user."""
@@ -37,6 +44,12 @@ class Model (object):
 
         self._save_storage()
 
+    def save_notifications(self, user, notification_time: str):
+        """Save notification time from user."""
+        self.notifications[str(user)] = notification_time
+
+        self.save_ntf_storage()
+
     def refresh_storage(self):
         """Refresh data in file.
 
@@ -44,18 +57,34 @@ class Model (object):
         """
         self._save_storage()
 
+    def load_notifications(self):
+        """Load info about user times for notification from file."""
+        if not os.path.isfile("notifications.json"):
+            self.save_ntf_storage()
+
+        with open("notifications.json", "r", encoding=UTF) as ntf_file:
+            self.notifications = collections.defaultdict(
+                dict,
+                json.load(ntf_file),
+            )
+
+    def save_ntf_storage(self):
+        """Save info about user times for notification to file."""
+        with open("notifications.json", "w", encoding=UTF) as ntf_file:
+            json.dump(self.notifications, ntf_file, ensure_ascii=False)
+
     def _load_storage(self):
         if not os.path.isfile("storage.json"):
             self._save_storage()
 
-        with open("storage.json", "r", encoding="utf-8") as storage_file:
+        with open("storage.json", "r", encoding=UTF) as storage_file:
             self.storage = collections.defaultdict(
                 dict,
                 json.load(storage_file),
             )
 
     def _save_storage(self):
-        with open("storage.json", "w", encoding="utf-8") as storage_file:
+        with open("storage.json", "w", encoding=UTF) as storage_file:
             json.dump(self.storage, storage_file, ensure_ascii=False)
 
 
@@ -135,11 +164,12 @@ class Controller (object):  # noqa: WPS214
             self.keyboard = keyboard.read()
         self.ratings = {}
         self.descriptions = {}
-        self.notification_times = {}
+        self.notification_times = model.notifications
 
     def start(self, user):
         """Implement operation "start"."""
         self.view.start(user, self.keyboard)
+        self.model.save_notifications(user, "21:00")
 
     def save_mood(self, user):
         """Implement operation "save"."""
@@ -243,10 +273,61 @@ class Controller (object):  # noqa: WPS214
         """Set new time to ask for mood input."""
         self.notification_times[user] = text
 
+        self.model.save_notifications(user, self.notification_times[user])
+
         message = (
             f"Установлено время уведомления {self.notification_times[user]}"
         )
         self.view.show_to_user(user, message, self.keyboard)
+        self.view.curr_state = State.MAIN_MENU
+
+    def do_scheduling(self):
+        """Check if it is time to send notification to user."""
+        was_notification_send = False
+        while True:
+            cur_time = datetime.datetime.utcnow() + datetime.timedelta(hours=3)
+            if cur_time.hour == 0 and cur_time.minute == 0:
+                was_notification_send = False
+            for user, user_time in self.model.notifications:
+                ntf_time = datetime.datetime.strptime(
+                    user_time,
+                    "%H:%M",
+                )
+                if (cur_time - ntf_time).seconds <= 60 and not was_notification_send:
+                    self.send_notification(user)
+                    was_notification_send = True
+                self.model.load_notifications()
+            time.sleep(10)
+
+    def send_notification(self, user):
+        """Send notification to user."""
+        self.view.show_to_user(
+            user,
+            "Пора заполнить настроение",
+            self.keyboard,
+        )
+
+
+def catch_event(model, view, controller):
+    """Catch event from user and decide what to do next."""
+    for event in view.get_actions():
+        state_handler = {
+            State.MAIN_MENU: controller.handle_action,
+            State.SAVE_MOOD: controller.handle_mood,
+            State.SAVE_DESCRIPTION: controller.handle_description,
+            State.SET_NOTIFICATION: controller.handle_notification_time,
+        }
+
+        state_handler.get(view.curr_state)(event.text, event.user_id)
+
+        if view.curr_state == State.MAIN_MENU:
+            controller.handle_action(event.text, event.user_id)
+        elif view.curr_state == State.SAVE_MOOD:
+            controller.handle_mood(event.text, event.user_id)
+        elif view.curr_state == State.SAVE_DESCRIPTION:
+            controller.handle_description(event.text, event.user_id)
+        elif view.curr_state == State.SET_NOTIFICATION:
+            controller.handle_notification_time(event.text, event.user_id)
 
 
 if __name__ == "__main__":
@@ -261,14 +342,11 @@ if __name__ == "__main__":
     view = View(vk_session)
     controller = Controller(model, view)
 
-    for event in view.get_actions():
-        if view.curr_state == State.MAIN_MENU:
-            action = event.text
-            user = event.user_id
-            controller.handle_action(action, user)
-        elif view.curr_state == State.SAVE_MOOD:
-            controller.handle_mood(event.text, event.user_id)
-        elif view.curr_state == State.SAVE_DESCRIPTION:
-            controller.handle_description(event.text, event.user_id)
-        elif view.curr_state == State.SET_NOTIFICATION:
-            controller.handle_notification_time(event.text, event.user_id)
+    thread_for_events = threading.Thread(
+        target=catch_event,
+        args=(model, view, controller),
+    )
+    thread_for_events.start()
+
+    thread_for_notify = threading.Thread(target=controller.do_scheduling)
+    thread_for_notify.start()
