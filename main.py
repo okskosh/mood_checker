@@ -23,7 +23,7 @@ class State (Enum):
     SET_NOTIFICATION = 3
 
 
-UTF = "utf-8"
+STORAGE_FILE_ENCODING = "utf-8"
 
 
 class Model (object):  # noqa: WPS214
@@ -31,61 +31,73 @@ class Model (object):  # noqa: WPS214
 
     def __init__(self):
         """Construct storage."""
-        self.storage = collections.defaultdict(dict)
-        self.notifications = collections.defaultdict(dict)
+        self.mood_storage = collections.defaultdict(dict)
+        self.ntf_storage = collections.defaultdict(dict)
 
         self._load_storage()
-        self.load_notifications()
 
     def save_mood(self, user, rating: int, description: str):
         """Save mood from user."""
         curr_date = str(datetime.datetime.now().date())
-        self.storage[str(user)][curr_date] = (rating, description)
+        self.mood_storage[str(user)][curr_date] = (rating, description)
 
-        self._save_storage()
+        self._save_mood_storage()
 
     def save_notifications(self, user, notification_time: str):
         """Save notification time from user."""
-        self.notifications[str(user)] = notification_time
+        self.ntf_storage[str(user)] = notification_time
 
-        self.save_ntf_storage()
+        self._save_ntf_storage()
 
     def refresh_storage(self):
         """Refresh data in file.
 
         Changed data storage will be written to file.
         """
-        self._save_storage()
+        self._save_mood_storage()
 
-    def load_notifications(self):
-        """Load info about user times for notification from file."""
+    def _load_storage(self):
         if not os.path.isfile("notifications.json"):
             self.save_ntf_storage()
 
-        with open("notifications.json", "r", encoding=UTF) as ntf_file:
-            self.notifications = collections.defaultdict(
+        with open(
+            "notifications.json",
+            "r",
+            encoding=STORAGE_FILE_ENCODING,
+        ) as ntf_file:
+            self.ntf_storage = collections.defaultdict(
                 dict,
                 json.load(ntf_file),
             )
 
-    def save_ntf_storage(self):
-        """Save info about user times for notification to file."""
-        with open("notifications.json", "w", encoding=UTF) as ntf_file:
-            json.dump(self.notifications, ntf_file, ensure_ascii=False)
-
-    def _load_storage(self):
         if not os.path.isfile("storage.json"):
-            self._save_storage()
+            self._save_mood_storage()
 
-        with open("storage.json", "r", encoding=UTF) as storage_file:
-            self.storage = collections.defaultdict(
+        with open(
+            "storage.json",
+            "r",
+            encoding=STORAGE_FILE_ENCODING,
+        ) as storage_file:
+            self.mood_storage = collections.defaultdict(
                 dict,
                 json.load(storage_file),
             )
 
-    def _save_storage(self):
-        with open("storage.json", "w", encoding=UTF) as storage_file:
-            json.dump(self.storage, storage_file, ensure_ascii=False)
+    def _save_ntf_storage(self):
+        with open(
+            "notifications.json",
+            "w",
+            encoding=STORAGE_FILE_ENCODING,
+        ) as ntf_file:
+            json.dump(self.ntf_storage, ntf_file, ensure_ascii=False)
+
+    def _save_mood_storage(self):
+        with open(
+            "storage.json",
+            "w",
+            encoding=STORAGE_FILE_ENCODING,
+        ) as storage_file:
+            json.dump(self.mood_storage, storage_file, ensure_ascii=False)
 
 
 class View (object):
@@ -160,11 +172,15 @@ class Controller (object):  # noqa: WPS214
         """Construct operator."""
         self.model = model
         self.view = view
-        with open("keyboard.json", "r", encoding="UTF-8") as keyboard:
+        with open(
+            "keyboard.json",
+            "r",
+            encoding=STORAGE_FILE_ENCODING,
+        ) as keyboard:
             self.keyboard = keyboard.read()
         self.ratings = {}
         self.descriptions = {}
-        self.notification_times = model.notifications
+        self.notification_times = model.ntf_storage
 
     def start(self, user):
         """Implement operation "start"."""
@@ -184,7 +200,7 @@ class Controller (object):  # noqa: WPS214
         """Generate month report about moods."""
         start_date = datetime.date.today().replace(day=1)
         moods = []
-        user_notes = self.model.storage.get(str(user))
+        user_notes = self.model.mood_storage.get(str(user))
         while (start_date <= datetime.date.today()):
             note = user_notes.get(str(start_date))
             if note is not None:
@@ -209,7 +225,7 @@ class Controller (object):  # noqa: WPS214
     def reset_mood(self, user):
         """Implement operation "reset"."""
         curr_date = str(datetime.datetime.now().date())
-        self.model.storage[str(user)].pop(curr_date, None)
+        self.model.mood_storage[str(user)].pop(curr_date, None)
         self.view.show_to_user(
             user,
             "Запись о сегодняшнем настроении сброшена.",
@@ -281,22 +297,21 @@ class Controller (object):  # noqa: WPS214
         self.view.show_to_user(user, message, self.keyboard)
         self.view.curr_state = State.MAIN_MENU
 
-    def do_scheduling(self):
+    def schedule_for_sending_ntf(self):
         """Check if it is time to send notification to user."""
-        was_notification_send = False
+        was_ntf_send = False
         while True:
             cur_time = datetime.datetime.utcnow() + datetime.timedelta(hours=3)
             if cur_time.hour == 0 and cur_time.minute == 0:
-                was_notification_send = False
+                was_ntf_send = False
             for user, user_time in self.model.notifications:
                 ntf_time = datetime.datetime.strptime(
                     user_time,
                     "%H:%M",
                 )
-                if (cur_time - ntf_time).seconds <= 60 and not was_notification_send:
+                if (cur_time - ntf_time).seconds <= 60 and not was_ntf_send:
                     self.send_notification(user)
-                    was_notification_send = True
-                self.model.load_notifications()
+                    was_ntf_send = True
             time.sleep(10)
 
     def send_notification(self, user):
@@ -308,18 +323,9 @@ class Controller (object):  # noqa: WPS214
         )
 
 
-def catch_event(model, view, controller):
+def process_event_from_menu(model, view, controller):
     """Catch event from user and decide what to do next."""
     for event in view.get_actions():
-        state_handler = {
-            State.MAIN_MENU: controller.handle_action,
-            State.SAVE_MOOD: controller.handle_mood,
-            State.SAVE_DESCRIPTION: controller.handle_description,
-            State.SET_NOTIFICATION: controller.handle_notification_time,
-        }
-
-        state_handler.get(view.curr_state)(event.text, event.user_id)
-
         if view.curr_state == State.MAIN_MENU:
             controller.handle_action(event.text, event.user_id)
         elif view.curr_state == State.SAVE_MOOD:
@@ -343,10 +349,12 @@ if __name__ == "__main__":
     controller = Controller(model, view)
 
     thread_for_events = threading.Thread(
-        target=catch_event,
+        target=process_event_from_menu,
         args=(model, view, controller),
     )
     thread_for_events.start()
 
-    thread_for_notify = threading.Thread(target=controller.do_scheduling)
+    thread_for_notify = threading.Thread(
+        target=controller.schedule_for_sending_ntf,
+    )
     thread_for_notify.start()
