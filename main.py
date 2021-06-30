@@ -297,7 +297,7 @@ class Controller (object):  # noqa: WPS214
         self.view.show_to_user(user, message, self.keyboard)
         self.view.curr_state = State.MAIN_MENU
 
-    def schedule_for_sending_ntf(self):
+    def schedule_for_sending_ntf(self):  # noqa: WPS231
         """Check if it is time to send notification to user."""
         was_ntf_send = False
         while True:
@@ -323,7 +323,7 @@ class Controller (object):  # noqa: WPS214
         )
 
 
-def process_event_from_menu(model, view, controller):
+def process_event_from_menu(model, view, controller):  # noqa: WPS231
     """Catch event from user and decide what to do next."""
     for event in view.get_actions():
         if view.curr_state == State.MAIN_MENU:
